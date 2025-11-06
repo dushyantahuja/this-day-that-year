@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  reitti-collage:
+    build: .
+    container_name: reitti-collage
+    environment:
+      - REITTI_URL=http://192.168.79.2:8030/
+      - START_YEAR=2012
+      - WAIT_TIME=5
+      - SCREENSHOT_WIDTH=1920
+      - SCREENSHOT_HEIGHT=1080
+      - COLLAGE_COLUMNS=3
+    volumes:
+      - ./output:/output
+    network_mode: host
+    # Uncomment to run daily at 9 AM
+    # restart: unless-stopped
+    # command: sh -c "while true; do python reitti_collage.py && sleep 86400; done"
