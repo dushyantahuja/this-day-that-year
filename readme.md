@@ -10,10 +10,12 @@ mkdir reitti-collage && cd reitti-collage
 ```
 
 2. Create the following files:
-   - `reitti_collage.py` (main script)
-   - `Dockerfile`
-   - `requirements.txt`
-   - `docker-compose.yml`
+   - Download all the files in this repo and keep them in the project directory
+   - Create a '.env' file with the following
+   ```
+    REITTI_USERNAME=<your username>
+    REITTI_PASSWORD=<your password>
+   ```
 
 3. Build and run:
 ```bash
