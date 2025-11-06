@@ -16,10 +16,13 @@ import time
 
 # Configuration
 REITTI_BASE_URL = os.getenv("REITTI_URL", "http://192.168.79.2:8030/")
+REITTI_USERNAME = os.getenv("REITTI_USERNAME", "")
+REITTI_PASSWORD = os.getenv("REITTI_PASSWORD", "")
 START_YEAR = int(os.getenv("START_YEAR", "2012"))
 SCREENSHOT_DIR = "/output/screenshots"
 OUTPUT_DIR = "/output/collages"
 WAIT_TIME = int(os.getenv("WAIT_TIME", "5"))
+LOGIN_WAIT_TIME = int(os.getenv("LOGIN_WAIT_TIME", "3"))
 SCREENSHOT_WIDTH = int(os.getenv("SCREENSHOT_WIDTH", "1920"))
 SCREENSHOT_HEIGHT = int(os.getenv("SCREENSHOT_HEIGHT", "1080"))
 COLUMNS = int(os.getenv("COLLAGE_COLUMNS", "3"))
@@ -35,6 +38,53 @@ def setup_driver():
     
     driver = webdriver.Chrome(options=chrome_options)
     return driver
+
+def login_to_reitti(driver):
+    """Log in to Reitti"""
+    if not REITTI_USERNAME or not REITTI_PASSWORD:
+        print("ERROR: REITTI_USERNAME and REITTI_PASSWORD environment variables must be set!")
+        sys.exit(1)
+    
+    print(f"Logging in to Reitti as {REITTI_USERNAME}...")
+    
+    try:
+        # Go to base URL (should show login form)
+        driver.get(REITTI_BASE_URL)
+        time.sleep(LOGIN_WAIT_TIME)
+        
+        # Find and fill username field by ID
+        username_field = driver.find_element("id", "username")
+        username_field.clear()
+        username_field.send_keys(REITTI_USERNAME)
+        
+        # Find and fill password field by ID
+        password_field = driver.find_element("id", "password")
+        password_field.clear()
+        password_field.send_keys(REITTI_PASSWORD)
+        
+        # Find and click the login button
+        login_button = driver.find_element("css selector", "button[type='submit']")
+        login_button.click()
+        
+        # Wait for redirect after login
+        time.sleep(LOGIN_WAIT_TIME)
+        
+        # Check if we're still on the login page (login failed)
+        if "/login" in driver.current_url or "login-container" in driver.page_source:
+            print("  ✗ Login failed - still on login page")
+            print("  Please check your username and password")
+            return False
+        
+        print("  ✓ Logged in successfully")
+        return True
+        
+    except Exception as e:
+        print(f"  ✗ Login failed: {e}")
+        print("\nPlease check:")
+        print("  1. REITTI_USERNAME and REITTI_PASSWORD are correct")
+        print("  2. Reitti instance is accessible at", REITTI_BASE_URL)
+        print("  3. Increase LOGIN_WAIT_TIME if page loads slowly")
+        return False
 
 def take_screenshot(driver, date_str, output_path):
     """Take screenshot of Reitti for a specific date"""
@@ -116,6 +166,11 @@ def main():
     # Setup browser
     print("Initializing headless browser...")
     driver = setup_driver()
+    
+    # Login to Reitti
+    if not login_to_reitti(driver):
+        driver.quit()
+        sys.exit(1)
     
     screenshot_paths = []
     

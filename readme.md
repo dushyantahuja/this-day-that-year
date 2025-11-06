@@ -17,8 +17,8 @@ mkdir reitti-collage && cd reitti-collage
 
 3. Build and run:
 ```bash
-docker-compose build
-docker-compose up
+docker compose build
+docker compose up
 ```
 
 The collage will be saved to `./output/collages/`
@@ -38,7 +38,7 @@ Edit `docker-compose.yml` environment variables:
 
 ### One-time run:
 ```bash
-docker-compose up
+docker compose up
 ```
 
 ### Daily scheduled run:
@@ -47,7 +47,7 @@ Uncomment the last two lines in docker-compose.yml to run daily at the same time
 ### Custom schedule with cron:
 Add to your host crontab:
 ```bash
-0 9 * * * cd /path/to/reitti-collage && docker-compose up
+0 9 * * * cd /path/to/reitti-collage && docker compose up
 ```
 
 ## Output Structure
