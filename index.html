@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>This Day That Year - Path Overlay</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --color-background: rgba(252, 252, 249, 1);
+            --color-surface: rgba(255, 255, 253, 1);
+            --color-text: rgba(19, 52, 59, 1);
+            --color-text-secondary: rgba(98, 108, 113, 1);
+            --color-primary: rgba(33, 128, 141, 1);
+            --color-primary-hover: rgba(29, 116, 128, 1);
+            --color-border: rgba(94, 82, 64, 0.2);
+            --color-error: rgba(192, 21, 47, 1);
+            --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --space-8: 8px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --radius-base: 8px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: rgba(31, 33, 33, 1);
+                --color-surface: rgba(38, 40, 40, 1);
+                --color-text: rgba(245, 245, 245, 1);
+                --color-text-secondary: rgba(167, 169, 169, 0.7);
+                --color-primary: rgba(50, 184, 198, 1);
+                --color-primary-hover: rgba(45, 166, 178, 1);
+                --color-border: rgba(119, 124, 124, 0.3);
+                --color-error: rgba(255, 84, 89, 1);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            background: var(--color-background);
+            color: var(--color-text);
+            padding: var(--space-20);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: var(--space-16);
+            color: var(--color-text);
+        }
+
+        .controls {
+            background: var(--color-surface);
+            padding: var(--space-16);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            margin-bottom: var(--space-16);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-12);
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-8);
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+        }
+
+        input, select {
+            padding: var(--space-8) var(--space-12);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-size: 14px;
+            font-family: var(--font-family-base);
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        button {
+            padding: var(--space-8) var(--space-20);
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-base);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--color-primary-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #map {
+            height: 600px;
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+        }
+
+        .legend {
+            background: var(--color-surface);
+            padding: var(--space-12);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            margin-top: var(--space-16);
+        }
+
+        .legend h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: var(--space-8);
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: var(--space-8);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-8);
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .error {
+            color: var(--color-error);
+            font-size: 14px;
+            padding: var(--space-12);
+            background: rgba(192, 21, 47, 0.1);
+            border-radius: var(--radius-base);
+            margin-top: var(--space-12);
+        }
+
+        .info {
+            color: var(--color-text-secondary);
+            font-size: 12px;
+            margin-top: var(--space-8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>This Day That Year - Path Overlay</h1>
+        
+        <div class="controls">
+            <div class="form-group">
+                <label for="reittiUrl">Reitti URL</label>
+                <input type="text" id="reittiUrl" placeholder="http://192.168.79.2:8080" value="http://192.168.79.2:8080">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiToken">API Token</label>
+                <input type="password" id="apiToken" placeholder="Your Reitti API token">
+                <div class="info">Find in Settings → API</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="selectedDate">Select Date</label>
+                <input type="date" id="selectedDate">
+            </div>
+            
+            <div class="form-group">
+                <label for="startYear">Start Year</label>
+                <input type="number" id="startYear" min="2010" max="2099" value="2012">
+            </div>
+            
+            <div class="form-group">
+                <label for="endYear">End Year</label>
+                <input type="number" id="endYear" min="2010" max="2099">
+            </div>
+            
+            <div class="form-group">
+                <button id="loadBtn" onclick="loadPaths()">Load Paths</button>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="map"></div>
+
+        <div class="legend" id="legend" style="display: none;">
+            <h3>Years</h3>
+            <div class="legend-items" id="legendItems"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        let map = L.map('map').setView([28.4595, 77.0266], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let pathLayers = [];
+        const colors = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+            '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
+            '#6366f1', '#f43f5e', '#22c55e', '#eab308', '#a855f7'
+        ];
+
+        // Set default date to today
+        document.getElementById('selectedDate').valueAsDate = new Date();
+        document.getElementById('endYear').value = new Date().getFullYear();
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function parseGPX(gpxText) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(gpxText, 'text/xml');
+            const trkpts = xmlDoc.getElementsByTagName('trkpt');
+            
+            const coordinates = [];
+            for (let i = 0; i < trkpts.length; i++) {
+                const lat = parseFloat(trkpts[i].getAttribute('lat'));
+                const lon = parseFloat(trkpts[i].getAttribute('lon'));
+                coordinates.push([lat, lon]);
+            }
+            
+            return coordinates;
+        }
+
+        async function fetchGPXForDate(url, token, date) {
+            const apiUrl = `${url}/api/v1/gpx/export?start=${date}&end=${date}`;
+            
+            try {
+                // Try with header authentication first (preferred method)
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-API-TOKEN': token
+                    }
+                });
+                
+                console.log(`Fetching ${date}: Status ${response.status}`);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Invalid API token - check Settings → API in Reitti');
+                    } else if (response.status === 404) {
+                        console.log(`No data for ${date}`);
+                        return null; // No data for this date
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const gpxText = await response.text();
+                console.log(`GPX received for ${date}: ${gpxText.length} bytes`);
+                
+                if (gpxText.length === 0) {
+                    console.log(`Empty GPX for ${date}`);
+                    return null;
+                }
+                
+                return await parseGPX(gpxText);
+            } catch (error) {
+                console.error(`Error fetching ${date}:`, error);
+                throw error;
+            }
+        }
+
+        async function loadPaths() {
+            const reittiUrl = document.getElementById('reittiUrl').value.trim();
+            const apiToken = document.getElementById('apiToken').value.trim();
+            const selectedDate = document.getElementById('selectedDate').value;
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            const loadBtn = document.getElementById('loadBtn');
+
+            // Validation
+            if (!reittiUrl || !apiToken || !selectedDate || !startYear || !endYear) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            if (startYear > endYear) {
+                showError('Start year must be before end year');
+                return;
+            }
+
+            // Clear previous paths
+            pathLayers.forEach(layer => map.removeLayer(layer));
+            pathLayers = [];
+
+            loadBtn.disabled = true;
+            loadBtn.textContent = 'Loading...';
+
+            const legendItems = document.getElementById('legendItems');
+            legendItems.innerHTML = '';
+
+            const monthDay = selectedDate.substring(5); // Get MM-DD portion
+            let allCoordinates = [];
+            let pathsLoaded = 0;
+
+            let errors = [];
+            
+            for (let year = startYear; year <= endYear; year++) {
+                const dateStr = `${year}-${monthDay}`;
+                const colorIndex = (year - startYear) % colors.length;
+                const color = colors[colorIndex];
+
+                try {
+                    const coordinates = await fetchGPXForDate(reittiUrl, apiToken, dateStr);
+                    
+                    if (coordinates && coordinates.length > 0) {
+                        // Add path to map
+                        const polyline = L.polyline(coordinates, {
+                            color: color,
+                            weight: 3,
+                            opacity: 0.8
+                        }).addTo(map);
+                        
+                        polyline.bindPopup(`<strong>${year}</strong><br>${coordinates.length} points`);
+                        pathLayers.push(polyline);
+                        allCoordinates = allCoordinates.concat(coordinates);
+
+                        // Add to legend
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'legend-item';
+                        legendItem.innerHTML = `
+                            <div class="legend-color" style="background: ${color}"></div>
+                            <span>${year}</span>
+                        `;
+                        legendItems.appendChild(legendItem);
+                        
+                        pathsLoaded++;
+                    }
+                } catch (error) {
+                    console.error(`Error loading ${dateStr}:`, error);
+                    errors.push(`${year}: ${error.message}`);
+                }
+            }
+            
+            console.log(`Total paths loaded: ${pathsLoaded}/${endYear - startYear + 1}`);
+
+            loadBtn.disabled = false;
+            loadBtn.textContent = 'Load Paths';
+
+            if (pathsLoaded === 0) {
+                let errorMsg = 'No path data found for the selected date range.';
+                if (errors.length > 0) {
+                    errorMsg += ' Errors: ' + errors.join(', ');
+                }
+                errorMsg += ' Check browser console (F12) for details.';
+                showError(errorMsg);
+            } else {
+                // Fit map to show all paths
+                if (allCoordinates.length > 0) {
+                    const bounds = L.latLngBounds(allCoordinates);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+                
+                document.getElementById('legend').style.display = 'block';
+            }
+        }
+
+        // Allow Enter key to trigger load
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadPaths();
+            }
+        });
+    </script>
+</body>
+</html>
